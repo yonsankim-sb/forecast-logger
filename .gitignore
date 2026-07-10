@@ -1,0 +1,45 @@
+# macOS
+.DS_Store
+
+# Xcode — user-specific
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+*.xccheckout
+
+# Xcode — build output
+build/
+DerivedData/
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Swift Package Manager
+.build/
+.swiftpm/
+Package.resolved
+
+# CocoaPods / Carthage (not used, but ignore if ever added)
+Pods/
+Carthage/Build/
+
+# Playgrounds
+timeline.xctimeline
+playground.xcworkspace
+
+# Fastlane / misc
+fastlane/report.xml
+fastlane/screenshots
+*.log
+
+# Distributable disk images
+*.dmg
+
+# Licensed timer font — NOT redistributed here (commercial TT Norms derivative).
+# Place your own copy at MacTimeTracker/Resources/Fonts/ to build with the real
+# face; without it the app falls back to the rounded system font. See README.
+MacTimeTracker/Resources/Fonts/*.ttf
+MacTimeTracker/Resources/Fonts/*.otf
+MacTimeTracker/Resources/Fonts/*.ttc

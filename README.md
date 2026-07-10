@@ -154,6 +154,30 @@ install-local.command              # build + install to /Applications (own Mac)
 
 ---
 
+## Where your data is stored
+
+Everything stays **on your Mac** — the app is sandboxed and nothing leaves the
+device except what you explicitly sync to Forecast. All local data lives under
+the app's sandbox container:
+
+```
+~/Library/Containers/com.forecastlogger.ForecastLogger/
+```
+
+| Data | Location | Notes |
+|---|---|---|
+| **Timer / logged hours** (+ the running or paused session) | `…/Data/Library/Preferences/com.forecastlogger.ForecastLogger.plist` — UserDefaults keys `timelog.entries.v1` and `timelog.session.v1` (JSON, via `TimeLogStore`) | The real hours from the start/stop timer. Private to this Mac; survives relaunch and app updates (bundle id is unchanged). |
+| **Settings** (account ID, contact email, UI language, shader style) | the same `…plist` (keys `harvest.accountId`, `harvest.contactEmail`, `app.language`, `shader.glass`) | The account ID is not a secret. |
+| **Personal access token** | macOS **Keychain** — generic-password item, service `com.forecastlogger.harvest` (this-device-only) | Never written to the plist or logs. |
+
+- The logged-hours plist is **not encrypted at the app level** — enable
+  **FileVault** to protect it at rest.
+- To wipe all local data: quit the app and delete the container folder above,
+  and remove the token via **Disconnect** in Settings (or Keychain Access →
+  `com.forecastlogger.harvest`).
+
+---
+
 ## Distribution
 
 This prototype is **ad-hoc signed and not notarized**, so a copy downloaded to

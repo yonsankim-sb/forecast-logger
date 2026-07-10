@@ -1,115 +1,105 @@
 # Forecast Logger
 
-A native macOS **menu-bar + window app** for [Forecast](https://www.forecastapp.com/)
-— Harvest's scheduling sibling. Browse your Forecast projects by their codes
-(e.g. `[24-0001] Website Redesign`), **log real hours with a start/stop timer**
-(stored locally), **schedule allocations** in Forecast (hours-per-day for a date
-or range), and optionally **sync your logged hours into Forecast**.
+[Forecast](https://www.forecastapp.com/)（Harvest のスケジューリング用サービス）向けの、
+ネイティブ macOS **メニューバー + ウィンドウアプリ**です。Forecast のプロジェクトを
+コード（例: `[24-0001] Website Redesign`）で一覧・検索し、**スタート/ストップ式の
+タイマーで実作業時間を記録**（ローカル保存）、Forecast に**予定（アロケーション）を
+登録**（日付・期間ごとの時間/日）、必要に応じて**記録した時間を Forecast に同期**できます。
 
-Built with SwiftUI (`Window` + a native menu-bar island) and `URLSession`
-async/await. **No third-party dependencies.** The personal access token is
-stored only in the macOS Keychain.
+SwiftUI（`Window` + ネイティブなメニューバー island）と `URLSession` の async/await で構築。
+**サードパーティ依存はありません。** パーソナルアクセストークンは macOS の Keychain のみに保存します。
 
-> **Status: internal prototype**, shared within the team as an ad-hoc-signed
-> build (not notarized). See [Distribution](#distribution) and
-> **[SECURITY.md](SECURITY.md)**.
+> **ステータス: 社内プロトタイプ。** チーム内に ad-hoc 署名ビルド（未 Notarize）で共有しています。
+> [配布](#配布) と **[SECURITY.md](SECURITY.md)** を参照してください。
 
-> **Why Forecast and not Harvest?** The app was originally specced against the
-> Harvest API for *logged time*, but the target account has **Forecast but not
-> Harvest** — so there is no Harvest time-tracking backend to write to. Forecast
-> is a *planning/scheduling* tool: it tracks **allocations** (planned hours), not
-> logged time, and has **no timer**. The app was retargeted accordingly: the
-> timer's real hours are stored locally and can be *synced* into Forecast
-> allocations.
+> **なぜ Harvest ではなく Forecast？** 当初は Harvest API の*実績時間*向けに仕様策定しましたが、
+> 対象アカウントは **Forecast はあるが Harvest がない**ため、書き込み先となる Harvest の
+> 時間記録バックエンドが存在しませんでした。Forecast は*計画/スケジューリング*ツールで、
+> **アロケーション（予定時間）**を扱い、実績や**タイマーは持ちません**。そのためアプリを
+> 再ターゲットし、タイマーの実時間はローカル保存し、Forecast のアロケーションへ*同期*できる形にしています。
 
 ---
 
-## Requirements
+## 動作要件
 
-- **macOS 13 Ventura** or later.
-- **Xcode 16** or later (the project uses file-system–synchronized groups).
-- **The timer font is not included — see below.**
+- **macOS 13 Ventura** 以降。
+- ビルドには **Xcode 16** 以降（プロジェクトは file-system–synchronized group を使用）。
+- **タイマー用フォントは同梱していません（下記参照）。**
 
-### Timer font (licensed — not in this repo)
+### タイマー用フォント（ライセンス品 — このリポジトリには含みません）
 
-The timer numerals use **SHIFTBRAIN Norms Variable**, a commercial
-(TT Norms–derived) typeface. It is **intentionally not committed** to this
-repository — redistributing a licensed font isn't permitted — and is excluded via
-`.gitignore`.
+タイマーの数字は **SHIFTBRAIN Norms Variable**（TT Norms 派生の商用書体）を使用します。
+ライセンス品の再配布はできないため、**意図的にコミットしていません**（`.gitignore` で除外）。
 
-- To build with the real face, place your licensed copy at
-  `MacTimeTracker/Resources/Fonts/SHIFTBRAIN Norms Variable.ttf`. It is embedded
-  into the app bundle and registered at launch by `AppFonts.registerBundled()`
-  (process scope only — nothing is installed system-wide).
-- **Without it the app still builds and runs**; the timer falls back to the
-  rounded system font automatically (`Font.timer(size:)`).
+- 本来の書体でビルドするには、ライセンス済みのファイルを
+  `MacTimeTracker/Resources/Fonts/SHIFTBRAIN Norms Variable.ttf` に置いてください。
+  起動時に `AppFonts.registerBundled()` がアプリバンドルへ埋め込み・登録します
+  （プロセススコープのみ。システムには一切インストールしません）。
+- **無くてもビルド・実行できます**。その場合タイマーはシステムの丸ゴシックへ自動フォールバックします
+  （`Font.timer(size:)`）。
 
 ---
 
-## 1. Generate a token
+## 1. トークンを発行する
 
-1. Go to **<https://id.getharvest.com/developers>** and sign in (the Harvest ID
-   service issues tokens for both Harvest *and* Forecast).
-2. Under **Personal Access Tokens**, create a token and copy it.
-3. You do **not** need the account ID by hand — the app discovers it.
+1. **<https://id.getharvest.com/developers>** にサインイン（Harvest ID サービスは Harvest / Forecast
+   両方のトークンを発行します）。
+2. **Personal Access Tokens** でトークンを作成してコピー。
+3. アカウント ID を手で控える必要はありません（アプリが自動検出します）。
 
-Each person connects with **their own** token — never share one.
+**各自が自分のトークンで接続してください** — 1 つのトークンを共有しないこと。
 
-## 2. Build & run
+## 2. ビルドと実行
 
-**In Xcode:** open `MacTimeTracker.xcodeproj`, select the **MacTimeTracker**
-scheme and a **My Mac** destination, and press **⌘R**.
+**Xcode:** `MacTimeTracker.xcodeproj` を開き、**MacTimeTracker** スキームと **My Mac** を選んで **⌘R**。
 
-> Signing: *Sign to Run Locally* (`CODE_SIGN_IDENTITY = "-"`), so it builds
-> without a paid Apple Developer account.
+> 署名: *Sign to Run Locally*（`CODE_SIGN_IDENTITY = "-"`）。有料の Apple Developer アカウント無しでビルドできます。
 
-**From the command line** — build Release, install to `/Applications`, launch:
+**コマンドライン** — Release をビルドし `/Applications` へインストール・起動:
 
 ```sh
 ./install-local.command
 ```
 
-A locally built app has no download-quarantine flag, so it launches with no
-Gatekeeper prompt. Its build output lives outside the repo
-(`~/Library/Developer/Xcode/DerivedData/ForecastLogger-local`), keeping the tree
-clean.
+ローカルでビルドしたアプリにはダウンロード隔離フラグが付かないため、Gatekeeper の警告なしで起動します。
+ビルド成果物はリポジトリ外
+（`~/Library/Developer/Xcode/DerivedData/ForecastLogger-local`）に置かれ、作業ツリーは汚れません。
 
-**Tests** (Swift Testing):
+**テスト**（Swift Testing）:
 
 ```sh
 xcodebuild test -project MacTimeTracker.xcodeproj -scheme MacTimeTracker \
   -destination 'platform=macOS'
 ```
 
-## 3. Connect
+## 3. 接続する
 
-1. Open **Settings** (gear icon).
-2. Paste your **Personal Access Token** and click **Look up accounts** — the app
-   queries the Harvest ID service and lists the Forecast accounts your token can
-   reach, auto-filling the Account ID.
-3. Click **Test Connection** (validates against Forecast `/whoami`). On success it
-   shows *Connected as \<your name\>* and saves the token to the Keychain.
+1. **Settings**（歯車アイコン）を開く。
+2. **Personal Access Token** を貼り付けて **Look up accounts** をタップ。Harvest ID サービスに
+   問い合わせ、トークンで到達できる Forecast アカウントを一覧表示し、Account ID を自動入力します。
+3. **Test Connection**（Forecast `/whoami` で検証）。成功すると *Connected as \<あなたの名前\>* と表示され、
+   トークンを Keychain に保存します。
 
 ---
 
-## Features
+## 機能
 
-| Area | What it does |
+| エリア | 内容 |
 |---|---|
-| **Settings** | Token entry + "Look up accounts" (auto-discovers your Forecast account ID); "Test Connection" against `/whoami`. Token saved to the Keychain only on success, and **never preloaded back** into the editable field. |
-| **Menu-bar island** | A dynamic-island-style card: the project being recorded, a big live timer, and **Record / Pause / Stop**. When idle you can pick a project in the island. |
-| **Record / Pause / Stop** | Log **real hours worked**. Pause closes the current segment and keeps the session (Resume); Stop ends it. Entries are stored **locally** and survive relaunch. Cross-midnight entries are split per day. |
-| **Quick / range schedule** | Create Forecast assignments (planned hours/day) for a date or a date range, with notes. |
-| **Today** | Toggle between **Logged** (local timer hours) and **Scheduled** (Forecast assignments), grouped by project with totals; refresh and delete (with confirmation); a per-day breakdown. |
-| **Sync logged → Forecast** | Rewrite each project's today assignment to your logged hours (creating one if none), or keep Forecast untouched. Resilient per-project; failures name the project. |
-| **Errors / offline** | Network & auth errors show a dismissible banner (never a crash); scheduling/sync disable when offline (the local timer still works). |
-| **Look & feel** | Compact/full windows, bilingual UI (EN/日本語), and a tunable Metal "liquid-glass" shader background. |
+| **Settings** | トークン入力 + "Look up accounts"（Forecast アカウント ID を自動検出）、"Test Connection"（`/whoami`）。成功時のみ Keychain に保存し、保存済みトークンは編集欄に**再読込しません**。 |
+| **メニューバー island** | dynamic-island 風カード: 記録中プロジェクト、大きなライブタイマー、**Record / Pause / Stop**。待機中は island 内でプロジェクトを選べます。 |
+| **Record / Pause / Stop** | **実作業時間**を記録。Pause は現在のセグメントを閉じてセッションを保持（Resume 可）、Stop で終了。エントリは**ローカル保存**され再起動後も復元。日付を跨ぐエントリは日ごとに分割。 |
+| **予定登録（単日 / 期間）** | Forecast のアロケーション（時間/日）を、日付または期間で作成（メモ付き）。 |
+| **Today** | **Logged**（ローカルのタイマー実績）と **Scheduled**（Forecast アロケーション）を切り替え、プロジェクト別に合計表示。更新・削除（確認あり）、日別内訳も。 |
+| **記録 → Forecast へ同期** | 各プロジェクトの本日アロケーションを実績時間に書き換え（無ければ作成）、または Forecast を変更しない。プロジェクト単位で耐障害的、失敗時は対象プロジェクトを明示。 |
+| **エラー / オフライン** | ネットワーク・認証エラーは閉じられるバナー表示（クラッシュしない）。オフライン時は予定登録/同期を無効化（ローカルタイマーは動作）。 |
+| **見た目** | コンパクト/フルウィンドウ、二言語 UI（EN/日本語）、調整可能な Metal "liquid-glass" シェーダー背景。 |
 
 ---
 
-## How it talks to Forecast
+## Forecast との通信
 
-Requests go to `https://api.forecastapp.com` over HTTPS and send:
+リクエストは HTTPS で `https://api.forecastapp.com` へ送られ、以下を付与します:
 
 ```
 Authorization: Bearer <token>
@@ -117,92 +107,85 @@ Forecast-Account-ID: <account id>
 User-Agent: Forecast Logger (<your email>)
 ```
 
-Endpoints: `GET /whoami`, `/projects`, `/clients`, `/assignments`,
-`POST`/`PUT`/`DELETE /assignments`. Account discovery uses
-`GET https://id.getharvest.com/api/v2/accounts`.
+使用エンドポイント: `GET /whoami`, `/projects`, `/clients`, `/assignments`,
+`POST`/`PUT`/`DELETE /assignments`。アカウント検出は
+`GET https://id.getharvest.com/api/v2/accounts`。
 
-> Forecast's API is **unofficial/undocumented**; base URL and payload shapes are
-> the community-known ones and can change without notice.
+> Forecast の API は**非公式・非公開**です。base URL とペイロード形式はコミュニティで知られているもので、
+> 予告なく変わる可能性があります。
 
 ---
 
-## Project layout
+## プロジェクト構成
 
 ```
 MacTimeTracker/
-├── MacTimeTrackerApp.swift        # @main; registers the bundled font at launch
-├── AppDelegate.swift              # keeps the app alive in the menu bar
-├── Models/                        # Forecast/Harvest DTOs, LoggedEntry
+├── MacTimeTrackerApp.swift        # @main; 起動時に同梱フォントを登録
+├── AppDelegate.swift              # メニューバー常駐でアプリを維持
+├── Models/                        # Forecast/Harvest DTO, LoggedEntry
 ├── Services/
-│   ├── ForecastAPI.swift          # async URLSession client + account discovery
-│   ├── KeychainStore.swift        # token save/load/delete (this-device-only)
-│   ├── AppFonts.swift             # register bundled fonts into the process
-│   ├── TimeLogStore.swift         # persist local logged entries
-│   └── AuthStore.swift            # token (Keychain) + accountId (UserDefaults)
+│   ├── ForecastAPI.swift          # 非同期 URLSession クライアント + アカウント検出
+│   ├── KeychainStore.swift        # トークン save/load/delete（this-device-only）
+│   ├── AppFonts.swift             # 同梱フォントをプロセスに登録
+│   ├── TimeLogStore.swift         # ローカルの記録エントリを永続化
+│   └── AuthStore.swift            # トークン（Keychain）+ accountId（UserDefaults）
 ├── ViewModels/TrackerViewModel.swift
-├── Views/                         # SwiftUI views + DesignSystem (timer face)
-├── Resources/Fonts/               # licensed font goes here (gitignored)
-├── Noise.metal                    # liquid-glass shader
-└── MacTimeTracker.entitlements    # app sandbox + outgoing network only
-MacTimeTrackerTests/               # Swift Testing suite
-install-local.command              # build + install to /Applications (own Mac)
+├── Views/                         # SwiftUI views + DesignSystem（タイマー書体）
+├── Resources/Fonts/               # ライセンスフォントを置く場所（gitignore 済み）
+├── Noise.metal                    # liquid-glass シェーダー
+└── MacTimeTracker.entitlements    # App Sandbox + 送信ネットワークのみ
+MacTimeTrackerTests/               # Swift Testing スイート
+install-local.command              # ビルド + /Applications へインストール（自分の Mac 用）
 ```
 
-- Bundle id: `com.forecastlogger.ForecastLogger`. All local data lives in its
-  sandbox container (`~/Library/Containers/com.forecastlogger.ForecastLogger/`).
-- The token lives only in the Keychain (service `com.forecastlogger.harvest`).
+- Bundle id: `com.forecastlogger.ForecastLogger`。ローカルデータはすべてこのサンドボックス
+  コンテナ（`~/Library/Containers/com.forecastlogger.ForecastLogger/`）に保存されます。
+- トークンは Keychain のみ（service `com.forecastlogger.harvest`）。
 
 ---
 
-## Where your data is stored
+## データの保存場所
 
-Everything stays **on your Mac** — the app is sandboxed and nothing leaves the
-device except what you explicitly sync to Forecast. All local data lives under
-the app's sandbox container:
+すべて**このMac内**で完結します — アプリはサンドボックス化されており、Forecast へ明示的に同期する分を
+除いてデータは端末外へ出ません。ローカルデータはすべてアプリのサンドボックスコンテナ配下に保存されます:
 
 ```
 ~/Library/Containers/com.forecastlogger.ForecastLogger/
 ```
 
-| Data | Location | Notes |
+| データ | 保存場所 | 備考 |
 |---|---|---|
-| **Timer / logged hours** (+ the running or paused session) | `…/Data/Library/Preferences/com.forecastlogger.ForecastLogger.plist` — UserDefaults keys `timelog.entries.v1` and `timelog.session.v1` (JSON, via `TimeLogStore`) | The real hours from the start/stop timer. Private to this Mac; survives relaunch and app updates (bundle id is unchanged). |
-| **Settings** (account ID, contact email, UI language, shader style) | the same `…plist` (keys `harvest.accountId`, `harvest.contactEmail`, `app.language`, `shader.glass`) | The account ID is not a secret. |
-| **Personal access token** | macOS **Keychain** — generic-password item, service `com.forecastlogger.harvest` (this-device-only) | Never written to the plist or logs. |
+| **タイマー / 記録した時間**（実行中・一時停止セッション含む） | `…/Data/Library/Preferences/com.forecastlogger.ForecastLogger.plist` の UserDefaults キー `timelog.entries.v1` と `timelog.session.v1`（JSON, `TimeLogStore`） | スタート/ストップ式タイマーの実時間。このMac限定で、再起動・アップデート後も保持（bundle id 不変のため）。 |
+| **設定**（アカウントID・連絡先メール・UI言語・シェーダースタイル） | 同じ `…plist`（キー `harvest.accountId`, `harvest.contactEmail`, `app.language`, `shader.glass`） | アカウントIDは秘密情報ではありません。 |
+| **パーソナルアクセストークン** | macOS **Keychain** — generic-password、service `com.forecastlogger.harvest`（this-device-only） | plist やログには一切書き込みません。 |
 
-- The logged-hours plist is **not encrypted at the app level** — enable
-  **FileVault** to protect it at rest.
-- To wipe all local data: quit the app and delete the container folder above,
-  and remove the token via **Disconnect** in Settings (or Keychain Access →
-  `com.forecastlogger.harvest`).
+- 記録データの plist は**アプリレベルでは暗号化されません** — at-rest 保護には **FileVault** を有効に。
+- ローカルデータを全消去するには: アプリを終了して上記コンテナフォルダを削除し、トークンは
+  Settings の **Disconnect**（または Keychain Access → `com.forecastlogger.harvest`）で削除してください。
 
 ---
 
-## Distribution
+## 配布
 
-This prototype is **ad-hoc signed and not notarized**, so a copy downloaded to
-another Mac is quarantined and blocked by Gatekeeper on first launch. Share it
-internally as a DMG:
+このプロトタイプは **ad-hoc 署名・未 Notarize** のため、他の Mac にダウンロードしたコピーは
+隔離され、初回起動時に Gatekeeper にブロックされます。社内では DMG として共有します:
 
-1. Build Release (`./install-local.command` builds the same product, or Archive
-   in Xcode).
-2. Package the `.app` into a DMG alongside:
-   - **`Install (first time).command`** — copies to `/Applications`, clears the
-     quarantine flag (`xattr -dr com.apple.quarantine …`), and launches.
-   - a short **README** for recipients.
-3. Recipients right-click **Install (first time).command → Open**, then paste
-   **their own** token in Settings.
+1. Release をビルド（`./install-local.command` が同じ成果物をビルド、または Xcode で Archive）。
+2. `.app` を以下と一緒に DMG 化:
+   - **`Install (first time).command`** — `/Applications` へコピーし、隔離フラグを解除
+     （`xattr -dr com.apple.quarantine …`）して起動。
+   - 受け取る人向けの短い **README**。
+3. 受け取った人は **Install (first time).command を右クリック → 開く** し、Settings で**自分の**トークンを貼り付け。
 
-**Upgrade path:** to remove Gatekeeper friction (and bind the Keychain item to
-your Apple **Team ID**), sign with a **Developer ID Application** certificate and
-**notarize + staple**. Details in [SECURITY.md](SECURITY.md#distribution-security).
+**恒久運用への移行:** Gatekeeper の摩擦をなくす（かつ Keychain のアイテムを自社の **Team ID** に束縛する）
+には、**Developer ID Application** 証明書で署名し **Notarize + staple** します。詳細は
+[SECURITY.md](SECURITY.md#distribution-security)。
 
 ---
 
-## Security
+## セキュリティ
 
-Credential handling, data-at-rest, network, sandboxing, and distribution
-security are documented in **[SECURITY.md](SECURITY.md)**. In short: the token is
-stored **only** in the Keychain (this-device-only), never in UserDefaults or
-logs; the app is sandboxed with the Hardened Runtime and minimal entitlements,
-and talks only to Harvest / Forecast over HTTPS.
+資格情報の扱い・データ at-rest・通信・サンドボックス・配布時のセキュリティは
+**[SECURITY.md](SECURITY.md)** に記載しています。要約: トークンは **Keychain のみ**（this-device-only）に保存し、
+UserDefaults やログには置きません。アプリは Hardened Runtime + 最小エンタイトルメントでサンドボックス化され、
+通信は Harvest / Forecast への HTTPS のみです。
